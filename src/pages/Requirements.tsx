@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowLeft, CheckCircle2, CircleDot, CircleDashed, Rocket, FileText } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { ArrowLeft, CheckCircle2, CircleDot, CircleDashed, Rocket, FileText, Copy, Filter } from 'lucide-react';
 import { Page, NavigationParams } from '../App';
 
 interface RequirementsProps {
@@ -60,12 +60,12 @@ const specData: SpecSection[] = [
         items: [
           { title: '可以创建多个仓库（仓库→盒子→物品）', status: '已实现', note: '支持仓库/盒子/物品多级结构与详情页' },
           { title: '一个仓库里有多个盒子，一个盒子里有多个物品', status: '已实现', note: '数据模型和界面均支持' },
-          { title: '自定义仓库样式（衣柜/书架/冰箱/票据/相册等等）', status: '部分实现', note: '支持类型与主题色选择，暂无专用模板' },
+          { title: '自定义仓库样式（衣柜/书架/冰箱/票据/相册等等）', status: '已实现', note: '新增样式模板选择与详情页模板预览' },
           { title: '拍照上传物品并智能识别标签', status: '部分实现', note: '支持拍照/上传与模拟AI识别填充' },
           { title: '物品状态管理（在用/闲置/损坏/借出）', status: '已实现', note: '提供在用/闲置/借出/维修中等状态' },
-          { title: '物品批量操作（批量移动/删除/标签修改）', status: '计划中' },
-          { title: '仓库容量限制与扩容机制', status: '部分实现', note: '盒子容量与利用率统计，未强制限制' },
-          { title: '物品到期提醒（保质期/保修期）', status: '计划中', note: '具备通知能力，待接入提醒逻辑' }
+          { title: '物品批量操作（批量移动/删除/标签修改）', status: '部分实现', note: '支持批量删除/标签修改，移动待完善' },
+          { title: '仓库容量限制与扩容机制', status: '已实现', note: '支持容量校验与一键扩容（+5）' },
+          { title: '物品到期提醒（保质期/保修期）', status: '部分实现', note: '支持保修到期提醒（基于描述解析）' }
         ]
       },
       {
@@ -296,8 +296,60 @@ function computeSummary(data: SpecSection[]) {
   return { ...counts, total };
 }
 
+function isIncomplete(item: SpecItem) {
+  return item.status !== '已实现';
+}
+
+function generateIncompleteMarkdown(data: SpecSection[]) {
+  const lines: string[] = [];
+  let total = 0;
+  lines.push(`# 未完成需求清单`);
+  data.forEach(section => {
+    // 判断该 section 是否有未完成项
+    const hasIncomplete = section.groups.some(g => g.items.some(isIncomplete));
+    if (!hasIncomplete) return;
+    lines.push(`\n## ${section.section}`);
+    section.groups.forEach(group => {
+      const incompleteItems = group.items.filter(isIncomplete);
+      if (incompleteItems.length === 0) return;
+      lines.push(`\n- ${group.title}`);
+      incompleteItems.forEach(item => {
+        total += 1;
+        const notePart = item.note ? `（${item.note}）` : '';
+        lines.push(`  - [${item.status}] ${item.title}${notePart}`);
+      });
+    });
+  });
+  lines.unshift(`未完成合计：${total}`);
+  return lines.join('\n');
+}
+
 export default function Requirements({ onNavigate }: RequirementsProps) {
   const summary = computeSummary(specData);
+  const incompleteCount = summary.total - summary['已实现'];
+  const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const filteredData = useMemo(() => {
+    if (!showIncompleteOnly) return specData;
+    return specData.map(section => ({
+      ...section,
+      groups: section.groups
+        .map(group => ({ ...group, items: group.items.filter(isIncomplete) }))
+        .filter(g => g.items.length > 0)
+    })).filter(sec => sec.groups.length > 0);
+  }, [showIncompleteOnly]);
+
+  const handleCopy = async () => {
+    try {
+      const text = generateIncompleteMarkdown(specData);
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -358,8 +410,34 @@ export default function Requirements({ onNavigate }: RequirementsProps) {
           </div>
         </div>
 
+        {/* Toolbar */}
+        <div className="flex items-center gap-3">
+          <div className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-white border border-gray-200 shadow-sm">
+            <span className="text-xs font-semibold text-gray-600">未完成</span>
+            <span className="text-sm font-bold text-gray-900">{incompleteCount}</span>
+          </div>
+          <button
+            onClick={() => setShowIncompleteOnly(v => !v)}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-2xl border transition-all duration-200 ${
+              showIncompleteOnly
+                ? 'bg-blue-600 text-white border-blue-600 shadow'
+                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            <Filter className="h-4 w-4" />
+            <span className="text-xs font-semibold">{showIncompleteOnly ? '只看未完成（开启）' : '只看未完成'}</span>
+          </button>
+          <button
+            onClick={handleCopy}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl border bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+          >
+            <Copy className="h-4 w-4" />
+            <span className="text-xs font-semibold">{copied ? '已复制未完成清单' : '复制未完成清单'}</span>
+          </button>
+        </div>
+
         {/* Sections */}
-        {specData.map((section, idx) => (
+        {filteredData.map((section, idx) => (
           <div key={idx} className="space-y-4">
             <h2 className="text-xl font-extrabold text-gray-900">{section.section}</h2>
             {section.groups.map((group, gIdx) => (

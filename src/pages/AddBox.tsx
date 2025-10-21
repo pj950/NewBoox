@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Camera, Upload, Box, Package, Smartphone, Book, Shirt, Utensils, Wrench, Gamepad2, Sparkles } from 'lucide-react';
 import { Page, NavigationParams } from '../App';
+import DataManager, { Box as BoxModel } from '../utils/dataManager';
 
 interface AddBoxProps {
   onNavigate: (page: Page, params?: NavigationParams) => void;
@@ -48,7 +49,7 @@ export default function AddBox({ onNavigate, warehouseId }: AddBoxProps) {
     }
   };
 
-  const handleTypeSelect = (type: any) => {
+  const handleTypeSelect = (type: typeof boxTypes[number]) => {
     setFormData(prev => ({
       ...prev,
       type: type.label,
@@ -58,7 +59,20 @@ export default function AddBox({ onNavigate, warehouseId }: AddBoxProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('创建盒子:', formData);
+
+    const dataManager = DataManager.getInstance();
+    const newBox: BoxModel = {
+      id: Date.now().toString(),
+      name: formData.name.trim() || '新建盒子',
+      type: formData.type || '其他',
+      gradient: formData.gradient,
+      capacity: Math.max(1, formData.capacity),
+      description: formData.description.trim(),
+      warehouseId: warehouseId || '1',
+      image: image || undefined
+    };
+
+    dataManager.saveBox(newBox);
     onNavigate('warehouse-detail', { warehouseId });
   };
 

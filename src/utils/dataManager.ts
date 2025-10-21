@@ -34,6 +34,7 @@ export interface Warehouse {
   gradient: string;
   description: string;
   image?: string;
+  styleTemplate?: 'wardrobe' | 'bookshelf' | 'fridge' | 'documents' | 'album' | string;
 }
 
 class DataManager {
@@ -144,7 +145,10 @@ class DataManager {
   }
 
   // 搜索功能
-  searchItems(query: string, filters: any = {}): Item[] {
+  searchItems(
+    query: string,
+    filters: { category?: string; status?: string; location?: string; tags?: string[]; sortBy?: string; limit?: number } = {}
+  ): Item[] {
     const searchEngine = SearchEngine.getInstance();
     const items = this.getItems();
     
@@ -199,9 +203,9 @@ class DataManager {
   }
 
   // 获取物品使用历史
-  getItemUsageHistory(itemId: string): any[] {
-    const usageHistory = JSON.parse(localStorage.getItem('usageHistory') || '[]');
-    return usageHistory.filter((record: any) => record.itemId === itemId);
+  getItemUsageHistory(itemId: string): { itemId: string; action: string; detail: string; timestamp: string; date: string }[] {
+    const usageHistory = JSON.parse(localStorage.getItem('usageHistory') || '[]') as { itemId: string; action: string; detail: string; timestamp: string; date: string }[];
+    return usageHistory.filter((record) => record.itemId === itemId);
   }
 
   // 格式化相对时间
@@ -249,14 +253,14 @@ class DataManager {
 
   // 获取最近使用的物品
   private getRecentlyUsedItems(limit: number): Item[] {
-    const usageHistory = JSON.parse(localStorage.getItem('usageHistory') || '[]');
+    const usageHistory = JSON.parse(localStorage.getItem('usageHistory') || '[]') as { itemId: string }[];
     const items = this.getItems();
-    const recentItemIds = [...new Set(usageHistory.slice(0, limit * 2).map((record: any) => record.itemId))];
+    const recentItemIds = [...new Set(usageHistory.slice(0, limit * 2).map((record) => record.itemId))];
     
     return recentItemIds
       .map(id => items.find(item => item.id === id))
-      .filter(Boolean)
-      .slice(0, limit) as Item[];
+      .filter((i): i is Item => Boolean(i))
+      .slice(0, limit);
   }
 
   // 获取分类分布
@@ -328,7 +332,7 @@ class DataManager {
         }
       });
       
-    } catch (error) {
+    } catch {
       errors.push('数据格式错误，无法解析');
     }
     

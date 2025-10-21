@@ -1,20 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Search, Grid, List, MapPin, Box, Sparkles } from 'lucide-react';
+import { Package, Plus, Grid, List, MapPin, Box, Sparkles } from 'lucide-react';
 import { Page, NavigationParams } from '../App';
 import SearchComponent from '../components/SearchComponent';
 import LoadingSpinner from '../components/LoadingSpinner';
 import EmptyState from '../components/EmptyState';
-import DataManager from '../utils/dataManager';
+import DataManager, { Warehouse as WarehouseModel } from '../utils/dataManager';
 
 interface WarehousesProps {
   onNavigate: (page: Page, params?: NavigationParams) => void;
-  addNotification: (notification: any) => void;
+  addNotification: (notification: { type: string; title: string; message: string }) => void;
 }
 
 export default function Warehouses({ onNavigate, addNotification }: WarehousesProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [warehouses, setWarehouses] = useState<any[]>([]);
-  const [filteredWarehouses, setFilteredWarehouses] = useState<any[]>([]);
+  interface WarehouseWithStats extends WarehouseModel {
+    boxCount: number;
+    itemCount: number;
+    utilization: number;
+    lastUsed: string;
+    styleLabel?: string;
+  }
+  const [warehouses, setWarehouses] = useState<WarehouseWithStats[]>([]);
+  const [filteredWarehouses, setFilteredWarehouses] = useState<WarehouseWithStats[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalStats, setTotalStats] = useState({
     warehouses: 0,
@@ -47,7 +54,17 @@ export default function Warehouses({ onNavigate, addNotification }: WarehousesPr
           boxCount: warehouseBoxes.length,
           itemCount: warehouseItems.length,
           utilization: totalCapacity > 0 ? Math.round((warehouseItems.length / totalCapacity) * 100) : 0,
-          lastUsed: warehouseItems.length > 0 ? '2小时前' : '未使用'
+          lastUsed: warehouseItems.length > 0 ? '2小时前' : '未使用',
+          styleLabel: (() => {
+            switch (warehouse.styleTemplate) {
+              case 'wardrobe': return '衣柜';
+              case 'bookshelf': return '书架';
+              case 'fridge': return '冰箱';
+              case 'documents': return '票据';
+              case 'album': return '相册';
+              default: return undefined;
+            }
+          })()
         };
       });
       
@@ -59,7 +76,7 @@ export default function Warehouses({ onNavigate, addNotification }: WarehousesPr
         boxes: boxes.length,
         items: items.length
       });
-    } catch (error) {
+    } catch {
       addNotification({
         type: 'error',
         title: '加载失败',
@@ -70,7 +87,10 @@ export default function Warehouses({ onNavigate, addNotification }: WarehousesPr
     }
   };
 
-  const handleSearch = (query: string, filters: any) => {
+  const handleSearch = (query: string, _filters?: unknown) => {
+    // 标记已使用避免lint报错
+    void _filters;
+
     let filtered = warehouses;
     
     if (query) {
@@ -229,7 +249,14 @@ export default function Warehouses({ onNavigate, addNotification }: WarehousesPr
                   </div>
                   <div className="absolute bottom-2 left-2 right-2">
                     <div className="flex items-center justify-between text-white">
-                      <span className="text-xs font-medium opacity-90">{warehouse.type}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium opacity-90">{warehouse.type}</span>
+                        {warehouse.styleLabel && (
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white/30 border border-white/40">
+                            {warehouse.styleLabel}
+                          </span>
+                        )}
+                      </div>
                       <span className="text-xs opacity-75">{warehouse.lastUsed}</span>
                     </div>
                   </div>
@@ -291,6 +318,7 @@ export default function Warehouses({ onNavigate, addNotification }: WarehousesPr
                     <div className="flex items-center space-x-2 text-xs text-gray-600">
                       <span>{warehouse.boxCount} 盒子</span>
                       <span>{warehouse.itemCount} 物品</span>
+                      {warehouse.styleLabel && <span>样式：{warehouse.styleLabel}</span>}
                       <span>{warehouse.lastUsed}</span>
                     </div>
                   </div>
