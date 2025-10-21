@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Trophy, Star, Settings, Bell, Shield, HelpCircle, LogOut, Calendar, Package, TrendingUp, Award, Sparkles } from 'lucide-react';
+import { User, Trophy, Star, Settings, Bell, Shield, HelpCircle, LogOut, Calendar, Package, TrendingUp, Sparkles, FileText } from 'lucide-react';
 import { Page, NavigationParams } from '../App';
 import AchievementManager from '../utils/achievementManager';
 
@@ -43,6 +43,7 @@ export default function Profile({ onNavigate }: ProfileProps) {
     { icon: Bell, label: '通知设置', action: () => {}, gradient: 'from-blue-500 to-cyan-500' },
     { icon: Shield, label: '隐私设置', action: () => {}, gradient: 'from-emerald-500 to-teal-500' },
     { icon: HelpCircle, label: '帮助中心', action: () => {}, gradient: 'from-orange-500 to-amber-500' },
+    { icon: FileText, label: '需求文档', action: () => onNavigate('requirements'), gradient: 'from-indigo-500 to-blue-600' },
     { icon: LogOut, label: '退出登录', action: () => {}, gradient: 'from-red-500 to-pink-500', danger: true }
   ];
 

@@ -12,6 +12,9 @@ import AddBox from './pages/AddBox';
 import AddItem from './pages/AddItem';
 import CommunityPost from './pages/CommunityPost';
 import CreatePost from './pages/CreatePost';
+import Settings from './pages/Settings';
+import EditItem from './pages/EditItem';
+import Requirements from './pages/Requirements';
 import NotificationSystem from './components/NotificationSystem';
 import { useNotifications } from './hooks/useNotifications';
 import OfflineIndicator from './components/OfflineIndicator';
@@ -31,7 +34,10 @@ export type Page =
   | 'add-box'
   | 'add-item'
   | 'community-post'
-  | 'create-post';
+  | 'create-post'
+  | 'settings'
+  | 'edit-item'
+  | 'requirements';
 
 export interface NavigationParams {
   warehouseId?: string;
@@ -106,6 +112,8 @@ function App() {
         return <BoxDetail {...pageProps} boxId={navigationParams.boxId} warehouseId={navigationParams.warehouseId} />;
       case 'item-detail':
         return <ItemDetail {...pageProps} itemId={navigationParams.itemId} addNotification={addNotification} />;
+      case 'edit-item':
+        return <EditItem onNavigate={navigate} itemId={navigationParams.itemId} addNotification={addNotification} />;
       case 'add-warehouse':
         return <AddWarehouse {...pageProps} />;
       case 'add-box':
@@ -116,6 +124,10 @@ function App() {
         return <CommunityPost onNavigate={navigate} postId={navigationParams.postId} />;
       case 'create-post':
         return <CreatePost onNavigate={navigate} />;
+      case 'settings':
+        return <Settings onNavigate={navigate} addNotification={addNotification} />;
+      case 'requirements':
+        return <Requirements onNavigate={navigate} />;
       default:
         return <Dashboard {...pageProps} />;
     }
