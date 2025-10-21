@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Camera, Upload, Package, Tag, Calendar, FileText, Loader2, Check, Smartphone, Laptop, Headphones, Book, Sparkles, QrCode } from 'lucide-react';
+import { ArrowLeft, Camera, Package, Smartphone, Laptop, Headphones, Book, Sparkles, QrCode } from 'lucide-react';
 import { Page, NavigationParams } from '../App';
 import { AIImageAnalysis } from '../components/AIImageAnalysis';
 import QRScanner from '../components/QRScanner';
+import DataManager from '../utils/dataManager';
 
 interface AddItemProps {
   onNavigate: (page: Page, params?: NavigationParams) => void;
   boxId?: string;
   warehouseId?: string;
-  addPendingChange?: (change: any) => void;
+  addPendingChange?: (change: unknown) => void;
+  addNotification?: (notification: { type: string; title: string; message: string }) => void;
 }
 
-export default function AddItem({ onNavigate, boxId, warehouseId, addPendingChange }: AddItemProps) {
+export default function AddItem({ onNavigate, boxId, warehouseId, addPendingChange, addNotification }: AddItemProps) {
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -45,7 +47,7 @@ export default function AddItem({ onNavigate, boxId, warehouseId, addPendingChan
   const statusOptions = ['在用', '闲置', '借出', '维修中'];
   const conditionOptions = ['全新', '良好', '一般', '需要维修'];
 
-  const handleAIAnalysisComplete = (result: any) => {
+  const handleAIAnalysisComplete = (result: { name: string; category: string; brand?: string; model?: string; tags: string[]; description: string }) => {
     if (result) {
       setFormData(prev => ({
         ...prev,
@@ -69,16 +71,64 @@ export default function AddItem({ onNavigate, boxId, warehouseId, addPendingChan
   };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('添加物品:', formData);
-    
-    // 添加到离线同步队列
-    if (addPendingChange) {
-      addPendingChange({
-        type: 'create',
-        entity: 'item',
-        data: { ...formData, id: Date.now().toString(), boxId, warehouseId }
-      });
+
+    const dm = DataManager.getInstance();
+
+    // 容量校验
+    if (boxId) {
+      const boxes = dm.getBoxes();
+      const thisBox = boxes.find(b => b.id === boxId);
+      if (thisBox) {
+        const currentCount = dm.getItemsByBox(boxId).length;
+        if (currentCount >= thisBox.capacity) {
+          addNotification?.({
+            type: 'error',
+            title: '容量已满',
+            message: `盒子 "${thisBox.name}" 已达容量上限 (${thisBox.capacity})，请先整理或扩容`
+          });
+          return;
+        }
+      }
     }
+
+    // 构造物品数据并保存到本地（离线优先）
+    const id = Date.now().toString();
+    const tags = formData.tags
+      .split(',')
+      .map(t => t.trim())
+      .filter(Boolean);
+
+    const descWithWarranty = formData.warrantyDate
+      ? `${formData.description}\n保修至：${formData.warrantyDate}`
+      : formData.description;
+
+    dm.saveItem({
+      id,
+      name: formData.name,
+      category: formData.category || '其他',
+      status: formData.status,
+      description: descWithWarranty,
+      location: '',
+      addedDate: formData.purchaseDate || new Date().toISOString().slice(0,10),
+      lastUsed: '刚刚',
+      tags,
+      image: image || undefined,
+      boxId: boxId || '',
+      warehouseId: warehouseId || ''
+    });
+
+    // 添加到离线同步队列
+    addPendingChange?.({
+      type: 'create',
+      entity: 'item',
+      data: { ...formData, id, boxId, warehouseId, tags }
+    });
+
+    addNotification?.({
+      type: 'success',
+      title: '添加成功',
+      message: `物品 "${formData.name}" 已添加`
+    });
     
     onNavigate('box-detail', { boxId, warehouseId });
   };

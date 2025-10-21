@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Camera, Upload, Package, MapPin, Palette, Home, Briefcase, Car, Archive, Sparkles } from 'lucide-react';
+import { ArrowLeft, Camera, Upload, Package, Palette, Home, Briefcase, Car, Archive, Sparkles, Shirt, Book, Snowflake, FileText as FileTextIcon, Image as ImageIcon } from 'lucide-react';
 import { Page, NavigationParams } from '../App';
 import DataManager, { Warehouse } from '../utils/dataManager';
 
 interface AddWarehouseProps {
   onNavigate: (page: Page, params?: NavigationParams) => void;
-  addNotification: (notification: any) => void;
+  addNotification: (notification: { type: string; title: string; message: string }) => void;
 }
 
 export default function AddWarehouse({ onNavigate, addNotification }: AddWarehouseProps) {
@@ -13,7 +13,8 @@ export default function AddWarehouse({ onNavigate, addNotification }: AddWarehou
     name: '',
     type: '',
     description: '',
-    gradient: 'from-blue-500 to-cyan-500'
+    gradient: 'from-blue-500 to-cyan-500',
+    styleTemplate: '' as Warehouse['styleTemplate']
   });
   const [image, setImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,6 +28,14 @@ export default function AddWarehouse({ onNavigate, addNotification }: AddWarehou
     { id: 'storage', label: '储物间', icon: Archive, gradient: 'from-orange-500 to-amber-500' },
     { id: 'garage', label: '车库', icon: Car, gradient: 'from-gray-500 to-slate-600' },
     { id: 'living', label: '客厅', icon: Home, gradient: 'from-purple-500 to-indigo-500' },
+  ];
+
+  const styleTemplates: { id: Warehouse['styleTemplate']; label: string; icon: React.ElementType; hint: string }[] = [
+    { id: 'wardrobe', label: '衣柜', icon: Shirt, hint: '分层挂放与抽屉' },
+    { id: 'bookshelf', label: '书架', icon: Book, hint: '多层书格展示' },
+    { id: 'fridge', label: '冰箱', icon: Snowflake, hint: '上下冷藏冷冻分区' },
+    { id: 'documents', label: '票据', icon: FileTextIcon, hint: '按年份/类别归档' },
+    { id: 'album', label: '相册', icon: ImageIcon, hint: '按事件/时间聚合' },
   ];
 
   const gradients = [
@@ -51,7 +60,7 @@ export default function AddWarehouse({ onNavigate, addNotification }: AddWarehou
     }
   };
 
-  const handleTypeSelect = (type: any) => {
+  const handleTypeSelect = (type: typeof warehouseTypes[number]) => {
     setFormData(prev => ({
       ...prev,
       type: type.label,
@@ -80,7 +89,8 @@ export default function AddWarehouse({ onNavigate, addNotification }: AddWarehou
         type: formData.type || '其他',
         gradient: formData.gradient,
         description: formData.description.trim(),
-        image: image || undefined
+        image: image || undefined,
+        styleTemplate: formData.styleTemplate || undefined
       };
 
       dataManager.saveWarehouse(newWarehouse);
@@ -92,7 +102,7 @@ export default function AddWarehouse({ onNavigate, addNotification }: AddWarehou
       });
       
       onNavigate('warehouses');
-    } catch (error) {
+    } catch {
       addNotification({
         type: 'error',
         title: '创建失败',
@@ -229,6 +239,43 @@ export default function AddWarehouse({ onNavigate, addNotification }: AddWarehou
                     <type.icon className="h-6 w-6 text-white" />
                   </div>
                   <span className="font-semibold text-gray-900">{type.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Style Templates */}
+          <div className="bg-white rounded-3xl p-6 shadow-lg shadow-gray-200/50 border border-gray-100/50">
+            <div className="flex items-center space-x-2 mb-4">
+              <div className="p-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600">
+                <Sparkles className="h-5 w-5 text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">样式模板</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {styleTemplates.map((tpl) => (
+                <button
+                  key={tpl.id as string}
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, styleTemplate: tpl.id }))}
+                  className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-300 ${
+                    formData.styleTemplate === tpl.id
+                      ? 'border-indigo-500 bg-indigo-50 shadow-lg shadow-indigo-500/25'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`p-3 rounded-xl bg-gradient-to-r ${formData.gradient}`}>
+                      <tpl.icon className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{tpl.label}</p>
+                      <p className="text-xs text-gray-500">{tpl.hint}</p>
+                    </div>
+                  </div>
+                  {formData.styleTemplate === tpl.id && (
+                    <span className="text-xs font-semibold text-indigo-600">已选择</span>
+                  )}
                 </button>
               ))}
             </div>
